@@ -9,6 +9,7 @@ import Image from "next/image";
 import Transcript from "./components/Transcript";
 import Events from "./components/Events";
 import BottomToolbar from "./components/BottomToolbar";
+import ConversationStage from "./components/ConversationStage";
 
 // Types
 import { SessionStatus } from "@/app/types";
@@ -24,8 +25,10 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
+import { travelPlanningScenario } from "@/app/agentConfigs/TravelPlanningAgent";
 import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
+import { travelPlanningCompanyName } from "@/app/agentConfigs/TravelPlanningAgent";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 
 // Map used by connect logic for scenarios defined via the SDK.
@@ -33,6 +36,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   simpleHandoff: simpleHandoffScenario,
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
+  travelPlanning: travelPlanningScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -214,6 +218,8 @@ function App() {
 
         const companyName = agentSetKey === 'customerServiceRetail'
           ? customerServiceRetailCompanyName
+          : agentSetKey === 'travelPlanning'
+          ? travelPlanningCompanyName
           : chatSupervisorCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
@@ -516,15 +522,24 @@ function App() {
       </div>
 
       <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
-        <Transcript
-          userText={userText}
-          setUserText={setUserText}
-          onSendMessage={handleSendTextMessage}
-          downloadRecording={downloadRecording}
-          canSend={
-            sessionStatus === "CONNECTED"
-          }
-        />
+        <div className="flex-1 flex flex-col">
+          <Transcript
+            userText={userText}
+            setUserText={setUserText}
+            onSendMessage={handleSendTextMessage}
+            downloadRecording={downloadRecording}
+            canSend={
+              sessionStatus === "CONNECTED"
+            }
+          />
+          
+          {/* Show conversation stage for travel planning agent */}
+          {agentSetKey === 'travelPlanning' && sessionStatus === "CONNECTED" && (
+            <div className="mt-2">
+              <ConversationStage sessionId={selectedAgentName} />
+            </div>
+          )}
+        </div>
 
         <Events isExpanded={isEventsPaneExpanded} />
       </div>

@@ -1,0 +1,50 @@
+{
+  "intent_clarification": {
+    "destination": {
+      "value": "Japan",
+      "status": "confirmed"
+    },
+    "when": {
+      "value": "winter",
+      "status": "confirmed"
+    },
+    "duration": {
+      "value": "1 week",
+      "status": "confirmed"
+    },
+    "budget": {
+      "value": "mid-range",
+      "status": "confirmed"
+    },
+    "people": {
+      "value": "solo",
+      "status": "confirmed"
+    },
+    "other": {
+      "value": "",
+      "status": "empty"
+    }
+  },
+  "plan_sharing": {
+    "cities": [
+      {
+        "value": "Beppu",
+        "status": "confirmed"
+      },
+      {
+        "value": "Mount Fuji",
+        "status": "confirmed"
+      }
+    ],
+    "attractions": [],
+    "food": [],
+    "itinerary": [],
+    "accommodation": [],
+    "events": [],
+    "other": []
+  },
+  "meta": {
+    "conversation_phase": "final",
+    "intent_status": "locked"
+  }
+}
