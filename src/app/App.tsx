@@ -69,6 +69,8 @@ function App() {
   } = useTranscript();
   const { logClientEvent, logServerEvent } = useEvent();
 
+  const [sessionId, setSessionId] = useState<string>("");
+
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
     RealtimeAgent[] | null
@@ -160,6 +162,14 @@ function App() {
   const [isAssistantSpeaking, setIsAssistantSpeaking] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (sessionId || typeof window === "undefined") return;
+    const storedSession = localStorage.getItem("travelSessionId");
+    const id = storedSession || uuidv4();
+    localStorage.setItem("travelSessionId", id);
+    setSessionId(id);
+  }, [sessionId]);
+
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
@@ -176,6 +186,8 @@ function App() {
   useHandleSessionHistory();
 
   useEffect(() => {
+    if (!sessionId) return;
+
     let finalAgentConfig = searchParams.get("agentConfig");
     if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
       finalAgentConfig = defaultAgentSetKey;
@@ -190,13 +202,13 @@ function App() {
 
     setSelectedAgentName(agentKeyToUse);
     setSelectedAgentConfigSet(agents);
-  }, [searchParams]);
+  }, [searchParams, sessionId]);
 
   useEffect(() => {
-    if (selectedAgentName && sessionStatus === "DISCONNECTED") {
+    if (sessionId && selectedAgentName && sessionStatus === "DISCONNECTED") {
       connectToRealtime();
     }
-  }, [selectedAgentName]);
+  }, [selectedAgentName, sessionId]);
 
   useEffect(() => {
     if (
@@ -237,6 +249,7 @@ function App() {
   };
 
   const connectToRealtime = async () => {
+    if (!sessionId) return;
     const agentSetKey = searchParams.get("agentConfig") || "default";
     if (sdkScenarioMap[agentSetKey]) {
       if (sessionStatus !== "DISCONNECTED") return;
@@ -270,6 +283,7 @@ function App() {
           outputGuardrails: [guardrail],
           extraContext: {
             addTranscriptBreadcrumb,
+            sessionId,
           },
         });
       } catch (err) {
@@ -606,9 +620,9 @@ function App() {
           />
           
         {/* Show conversation stage for travel planning agents */}
-        {(agentSetKey === 'travelPlanning' || agentSetKey === 'fastTravelPlanning') && sessionStatus === "CONNECTED" && (
+        {(agentSetKey === 'travelPlanning' || agentSetKey === 'fastTravelPlanning') && sessionStatus === "CONNECTED" && sessionId && (
           <div className="mt-2">
-            <ConversationStage sessionId={selectedAgentName} />
+            <ConversationStage sessionId={sessionId} />
           </div>
         )}
         </div>
