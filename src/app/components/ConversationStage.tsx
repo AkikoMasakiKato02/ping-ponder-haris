@@ -15,15 +15,6 @@ interface StageInfo {
   state: TravelState;
 }
 
-const INTENT_LABELS: Record<keyof TravelState['intent_clarification'], string> = {
-  destination: 'Destination',
-  when: 'Timing',
-  duration: 'Duration',
-  budget: 'Budget',
-  people: 'Travelers',
-  other: 'Other Notes',
-};
-
 const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, className = "" }) => {
   const [stageInfo, setStageInfo] = useState<StageInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +32,8 @@ const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, classN
           phase: data.phase,
           intentStatus: data.intentStatus,
           emptySlots: data.emptySlots,
-          isComplete: data.isComplete
+          isComplete: data.isComplete,
+          state: data.state
         });
       } else {
         console.error('Failed to fetch stage info:', response.status, response.statusText);
@@ -107,6 +99,19 @@ const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, classN
     }
   };
 
+  const getSlotStatusColor = (status: string) => {
+    switch (status) {
+      case 'empty':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'proposed':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'confirmed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className={`p-3 bg-gray-50 rounded-lg border ${className}`}>
@@ -152,6 +157,28 @@ const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, classN
       {stageInfo.isComplete && (
         <div className="mt-2">
           <span className="text-xs text-green-600 font-medium">✓ All information collected</span>
+        </div>
+      )}
+
+      {stageInfo.state?.intent_clarification && (
+        <div className="mt-3">
+          <p className="text-xs text-gray-600 mb-2">Intent details</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {Object.entries(stageInfo.state.intent_clarification).map(([slotName, slot]) => (
+              <div
+                key={slotName}
+                className={`border rounded-lg p-2 flex flex-col gap-1 ${getSlotStatusColor(slot.status)}`}
+              >
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="uppercase tracking-wide">{slotName}</span>
+                  <span className="px-2 py-0.5 rounded-full border text-[11px]">{slot.status}</span>
+                </div>
+                <div className="text-sm text-gray-900">
+                  {slot.value ? slot.value : <span className="text-gray-500">Not provided yet</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
