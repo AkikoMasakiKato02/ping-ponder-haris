@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import type { TravelState } from '@/app/agentConfigs/TravelPlanningAgent/serverStateManager';
 
 interface ConversationStageProps {
   sessionId?: string;
@@ -11,7 +12,17 @@ interface StageInfo {
   intentStatus: string;
   emptySlots: string[];
   isComplete: boolean;
+  state: TravelState;
 }
+
+const INTENT_LABELS: Record<keyof TravelState['intent_clarification'], string> = {
+  destination: 'Destination',
+  when: 'Timing',
+  duration: 'Duration',
+  budget: 'Budget',
+  people: 'Travelers',
+  other: 'Other Notes',
+};
 
 const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, className = "" }) => {
   const [stageInfo, setStageInfo] = useState<StageInfo | null>(null);

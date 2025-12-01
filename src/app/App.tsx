@@ -26,9 +26,11 @@ import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
 import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { travelPlanningScenario } from "@/app/agentConfigs/TravelPlanningAgent";
+import { fastTravelPlanningScenario } from "@/app/agentConfigs/TravelPlanningAgent/fast";
 import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { travelPlanningCompanyName } from "@/app/agentConfigs/TravelPlanningAgent";
+import { fastTravelPlanningCompanyName } from "@/app/agentConfigs/TravelPlanningAgent/fast";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 
 // Map used by connect logic for scenarios defined via the SDK.
@@ -37,6 +39,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   customerServiceRetail: customerServiceRetailScenario,
   chatSupervisor: chatSupervisorScenario,
   travelPlanning: travelPlanningScenario,
+  fastTravelPlanning: fastTravelPlanningScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -216,11 +219,13 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
-        const companyName = agentSetKey === 'customerServiceRetail'
-          ? customerServiceRetailCompanyName
-          : agentSetKey === 'travelPlanning'
-          ? travelPlanningCompanyName
-          : chatSupervisorCompanyName;
+  const companyName = agentSetKey === 'fastTravelPlanning'
+    ? customerServiceRetailCompanyName
+    : agentSetKey === 'travelPlanning'
+    ? travelPlanningCompanyName
+    : agentSetKey === 'fastTravelPlanning'
+    ? fastTravelPlanningCompanyName
+    : chatSupervisorCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
         await connect({
@@ -533,12 +538,12 @@ function App() {
             }
           />
           
-          {/* Show conversation stage for travel planning agent */}
-          {agentSetKey === 'travelPlanning' && sessionStatus === "CONNECTED" && (
-            <div className="mt-2">
-              <ConversationStage sessionId={selectedAgentName} />
-            </div>
-          )}
+        {/* Show conversation stage for travel planning agents */}
+        {(agentSetKey === 'travelPlanning' || agentSetKey === 'fastTravelPlanning') && sessionStatus === "CONNECTED" && (
+          <div className="mt-2">
+            <ConversationStage sessionId={selectedAgentName} />
+          </div>
+        )}
         </div>
 
         <Events isExpanded={isEventsPaneExpanded} />

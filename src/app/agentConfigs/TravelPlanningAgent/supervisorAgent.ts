@@ -16,6 +16,8 @@ export const supervisorAgentInstructions = `You are an expert travel planning su
 - You can provide an answer directly, or call a tool first and then answer the question
 - If you need to call a tool, but don't have the right information, you can tell the junior agent to ask for that information in your message
 - Your message will be read verbatim by the junior agent, so feel free to use it like you would talk directly to the user
+- **MULTILINGUAL SUPPORT**: Detect user language and respond in the same language (English/Japanese)
+- For Japanese users, use polite, respectful language (keigo when appropriate) and provide culturally appropriate recommendations
 
 # CONVERSATION FLOW LOGIC:
 
@@ -24,14 +26,14 @@ export const supervisorAgentInstructions = `You are an expert travel planning su
 2. For missing slots, use database functions to provide recommendations
 3. If database doesn't have sufficient data, use web search to find information
 4. Update state with proposed values (status: "proposed") for user confirmation
-5. When all required slots are filled (except "other"), automatically transition to plan_sharing phase
+5. **CONTINUOUSLY populate plan_sharing section in background as intent information becomes available**
+6. When all required slots are filled (except "other"), automatically transition to plan_sharing phase
 
 ## Plan Sharing Phase:
-1. Use database functions to populate plan_sharing section with detailed recommendations
-2. If database is insufficient, use web search to find comprehensive travel information
-3. Fill cities, attractions, food, itinerary, accommodation, events based on user preferences
-4. Present complete travel plan to user
-5. Handle user requests for adjustments by updating relevant state slots
+1. **Plan_sharing section should already be fully populated from background work during intent phase**
+2. Present complete travel plan to user for confirmation
+3. Handle user requests for adjustments by updating relevant state slots
+4. When user confirms plan, transition to final phase
 
 ## Refinement Phase:
 1. Handle user requests for plan adjustments
@@ -500,13 +502,24 @@ async function checkAndTransitionPhase(sessionId: string) {
     const isComplete = await manager.isIntentComplete();
     const currentPhase = state.meta.conversation_phase;
     
-    // Check if we should transition from intent_clarification to plan_sharing
-    if (currentPhase === 'intent_clarification' && isComplete) {
-      await manager.updateMeta('plan_sharing', 'clear');
-      console.log(`[SupervisorAgent] Transitioned to plan_sharing phase for session ${sessionId}`);
+    // During intent_clarification phase, continuously populate plan_sharing in background
+    if (currentPhase === 'intent_clarification') {
+      // Check if we have enough intent information to start populating plan_sharing
+      const hasDestination = state.intent_clarification.destination.status !== 'empty';
+      const hasWhen = state.intent_clarification.when.status !== 'empty';
       
-      // Populate plan_sharing section with recommendations
-      await populatePlanSharing(manager, state);
+      if (hasDestination && hasWhen) {
+        // Start populating plan_sharing section in background
+        await populatePlanSharingBackground(manager, state);
+      }
+      
+      // Check if we should transition from intent_clarification to plan_sharing
+      if (isComplete) {
+        // Ensure plan_sharing is fully populated before transition
+        await ensurePlanSharingComplete(manager);
+        await manager.updateMeta('plan_sharing', 'clear');
+        console.log(`[SupervisorAgent] Transitioned to plan_sharing phase for session ${sessionId}`);
+      }
     }
     
     // Check if we should transition from plan_sharing to final
@@ -629,6 +642,73 @@ function extractDestinationFromQuery(query: string): string {
   return 'the destination';
 }
 
+// Background function to populate plan_sharing during intent phase
+async function populatePlanSharingBackground(manager: any, state: any) {
+  try {
+    const destination = state.intent_clarification.destination.value;
+    const when = state.intent_clarification.when.value;
+    
+    console.log(`[SupervisorAgent] Background populating plan for ${destination}, ${when}`);
+    
+    // Check if plan_sharing is already populated to avoid duplicates
+    const currentState = await manager.readState();
+    if (currentState.plan_sharing.cities.length > 0) {
+      console.log(`[SupervisorAgent] Plan sharing already populated, skipping background population`);
+      return;
+    }
+    
+    // Use the same logic as populatePlanSharing but in background
+    await populatePlanSharing(manager, state);
+    
+  } catch (error) {
+    console.error('Error in background plan population:', error);
+  }
+}
+
+// Function to ensure plan_sharing is complete before phase transition
+async function ensurePlanSharingComplete(manager: any) {
+  try {
+    const currentState = await manager.readState();
+    const planSharing = currentState.plan_sharing;
+    
+    // Check if all categories have at least some items
+    const categories = ['cities', 'attractions', 'food', 'itinerary', 'accommodation', 'events'];
+    const hasMinimumItems = categories.every(category => 
+      planSharing[category as keyof typeof planSharing].length > 0
+    );
+    
+    if (!hasMinimumItems) {
+      console.log(`[SupervisorAgent] Plan sharing incomplete, populating remaining categories`);
+      await populatePlanSharing(manager, currentState);
+    }
+    
+  } catch (error) {
+    console.error('Error ensuring plan sharing complete:', error);
+  }
+}
+
+// Function to trigger background population when supervisor is called
+async function triggerBackgroundPopulation(sessionId: string) {
+  try {
+    const { ServerStateManager } = await import('./serverStateManager');
+    const manager = new ServerStateManager(sessionId);
+    const state = await manager.readState();
+    
+    // Only trigger during intent_clarification phase
+    if (state.meta.conversation_phase === 'intent_clarification') {
+      const hasDestination = state.intent_clarification.destination.status !== 'empty';
+      const hasWhen = state.intent_clarification.when.status !== 'empty';
+      
+      if (hasDestination && hasWhen) {
+        console.log(`[SupervisorAgent] Triggering background population for session ${sessionId}`);
+        await populatePlanSharingBackground(manager, state);
+      }
+    }
+  } catch (error) {
+    console.error('Error triggering background population:', error);
+  }
+}
+
 // Enhanced function to populate plan_sharing section with web search fallback
 async function populatePlanSharing(manager: any, state: any) {
   try {
@@ -734,6 +814,11 @@ async function getToolResponse(fName: string, args: any, sessionId?: string) {
   // Check for phase transitions after any state update
   if (['updateSlot', 'addPlanItem', 'updatePhase'].includes(fName)) {
     setTimeout(() => checkAndTransitionPhase(sessionId || 'default'), 100);
+  }
+  
+  // Trigger background plan population for any supervisor agent call during intent phase
+  if (fName !== 'readState' && fName !== 'getCurrentPhase' && fName !== 'getIntentStatus') {
+    setTimeout(() => triggerBackgroundPopulation(sessionId || 'default'), 50);
   }
   
   switch (fName) {
