@@ -98,34 +98,49 @@ function App() {
     }
   }, [sdkAudioElement]);
 
-  const handleAvatarEvents = useCallback((event: any) => {
-    switch (event.type) {
-      case "input_audio_buffer.speech_started":
-        setAvatarState("listening");
-        setIsAssistantSpeaking(false);
-        setIsRecording(true);
-        break;
-      case "input_audio_buffer.speech_stopped":
-        setAvatarState("thinking");
-        setIsRecording(false);
-        break;
-      case "conversation.item.input_audio_transcription.completed":
-        setAvatarState((prev) => (prev === "listening" ? "thinking" : prev));
-        break;
-      case "response.audio.delta":
-      case "response.output_audio.started":
-      case "response.output_audio.delta":
-        setAvatarState("speaking");
-        setIsAssistantSpeaking(true);
-        break;
-      case "response.audio_transcript.done":
-      case "response.output_audio.done":
-      case "response.done":
-        setAvatarState("idle");
-        setIsAssistantSpeaking(false);
-        break;
-    }
-  }, []);
+  const handleAvatarEvents = useCallback(
+    (event: any) => {
+      switch (event.type) {
+        case "input_audio_buffer.speech_started":
+          setAvatarState("listening");
+          setIsAssistantSpeaking(false);
+          setIsRecording(true);
+          break;
+        case "input_audio_buffer.speech_stopped":
+          setAvatarState("thinking");
+          setIsRecording(false);
+          break;
+        case "conversation.item.input_audio_transcription.completed":
+          setAvatarState((prev) => (prev === "listening" ? "thinking" : prev));
+          break;
+        case "response.audio.delta":
+        case "response.output_audio.started":
+        case "response.output_audio.delta":
+          setAvatarState("speaking");
+          setIsAssistantSpeaking(true);
+          break;
+        case "response.audio_transcript.done":
+        case "response.output_audio.done":
+        case "response.done": {
+          const audioIsPlaying =
+            sdkAudioElement &&
+            sdkAudioElement.dataset.source === "realtime-sdk-output" &&
+            !sdkAudioElement.paused;
+
+          if (audioIsPlaying) {
+            // Keep the avatar in the speaking state until playback actually stops.
+            setAvatarState("speaking");
+            setIsAssistantSpeaking(true);
+          } else {
+            setAvatarState("idle");
+            setIsAssistantSpeaking(false);
+          }
+          break;
+        }
+      }
+    },
+    [sdkAudioElement],
+  );
 
   const {
     connect,
