@@ -130,6 +130,29 @@ export class ServerStateManager {
     }
   }
 
+  public async resetState(): Promise<void> {
+    if (typeof window === 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs');
+
+      const defaultState = this.getDefaultState();
+
+      try {
+        const sessionLogPath = this.getSessionLogPath();
+        fs.writeFileSync(sessionLogPath, JSON.stringify(defaultState, null, 2));
+
+        const snapshotPath = this.getStateSnapshotPath();
+        if (snapshotPath) {
+          fs.writeFileSync(snapshotPath, JSON.stringify(defaultState, null, 2));
+        }
+
+        await this.logStateChange('State reset to default');
+      } catch (error) {
+        console.error('Error resetting state:', error);
+      }
+    }
+  }
+
   public async updateSlot(
     section: 'intent_clarification' | 'plan_sharing',
     slotName: string,

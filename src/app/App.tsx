@@ -187,6 +187,32 @@ function App() {
     setSessionId(id);
   }, [sessionId]);
 
+  useEffect(() => {
+    if (!sessionId || typeof window === "undefined") return;
+
+    const initKey = `travelStateInitialized_${sessionId}`;
+    const alreadyInitialized = localStorage.getItem(initKey) === "true";
+    if (alreadyInitialized) return;
+
+    const resetStateForSession = async () => {
+      try {
+        await fetch("/api/update-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            action: "resetState",
+          }),
+        });
+        localStorage.setItem(initKey, "true");
+      } catch (err) {
+        console.error("Failed to reset server state for new session", err);
+      }
+    };
+
+    resetStateForSession();
+  }, [sessionId]);
+
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
     useAudioDownload();
