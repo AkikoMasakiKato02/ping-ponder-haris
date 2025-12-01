@@ -15,15 +15,6 @@ interface StageInfo {
   state: TravelState;
 }
 
-const INTENT_LABELS: Record<keyof TravelState['intent_clarification'], string> = {
-  destination: 'Destination',
-  when: 'Timing',
-  duration: 'Duration',
-  budget: 'Budget',
-  people: 'Travelers',
-  other: 'Other Notes',
-};
-
 const ConversationStage: React.FC<ConversationStageProps> = ({ sessionId, className = "" }) => {
   const [stageInfo, setStageInfo] = useState<StageInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
