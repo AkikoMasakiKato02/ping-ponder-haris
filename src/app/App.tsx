@@ -85,6 +85,8 @@ function App() {
     const el = document.createElement('audio');
     el.autoplay = true;
     el.style.display = 'none';
+    // Avoid duplicate playback if other audio nodes linger from previous sessions
+    el.dataset.source = 'realtime-sdk-output';
     document.body.appendChild(el);
     return el;
   }, []);
@@ -255,6 +257,14 @@ function App() {
       if (sessionStatus !== "DISCONNECTED") return;
       setSessionStatus("CONNECTING");
 
+      // Make sure any previous tracks on the shared audio element are stopped before reuse
+      if (sdkAudioElement?.srcObject instanceof MediaStream) {
+        (sdkAudioElement.srcObject as MediaStream)
+          .getTracks()
+          .forEach((t) => t.stop());
+        sdkAudioElement.srcObject = null;
+      }
+
       try {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
         if (!EPHEMERAL_KEY) return;
@@ -298,6 +308,12 @@ function App() {
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+
+    if (audioElementRef.current?.srcObject instanceof MediaStream) {
+      const stream = audioElementRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((t) => t.stop());
+      audioElementRef.current.srcObject = null;
+    }
   };
 
   const sendSimulatedUserMessage = (text: string) => {
