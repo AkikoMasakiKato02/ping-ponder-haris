@@ -9,8 +9,8 @@ interface BottomToolbarProps {
   isPTTUserSpeaking: boolean;
   handleTalkButtonDown: () => void;
   handleTalkButtonUp: () => void;
-  isEventsPaneExpanded: boolean;
-  setIsEventsPaneExpanded: (val: boolean) => void;
+  isAvatarVisible: boolean;
+  setIsAvatarVisible: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
   codec: string;
@@ -25,8 +25,8 @@ function BottomToolbar({
   isPTTUserSpeaking,
   handleTalkButtonDown,
   handleTalkButtonUp,
-  isEventsPaneExpanded,
-  setIsEventsPaneExpanded,
+  isAvatarVisible,
+  setIsAvatarVisible,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
   codec,
@@ -118,14 +118,14 @@ function BottomToolbar({
 
       <div className="flex flex-row items-center gap-2">
         <input
-          id="logs"
+          id="avatar"
           type="checkbox"
-          checked={isEventsPaneExpanded}
-          onChange={(e) => setIsEventsPaneExpanded(e.target.checked)}
+          checked={isAvatarVisible}
+          onChange={(e) => setIsAvatarVisible(e.target.checked)}
           className="w-4 h-4"
         />
-        <label htmlFor="logs" className="flex items-center cursor-pointer">
-          Logs
+        <label htmlFor="avatar" className="flex items-center cursor-pointer">
+          Avatar
         </label>
       </div>
 

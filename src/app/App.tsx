@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
@@ -7,7 +7,7 @@ import Image from "next/image";
 
 // UI components
 import Transcript from "./components/Transcript";
-import Events from "./components/Events";
+import { RobotAvatar } from "./components/RobotAvatar";
 import BottomToolbar from "./components/BottomToolbar";
 import ConversationStage from "./components/ConversationStage";
 
@@ -94,6 +94,35 @@ function App() {
     }
   }, [sdkAudioElement]);
 
+  const handleAvatarEvents = useCallback((event: any) => {
+    switch (event.type) {
+      case "input_audio_buffer.speech_started":
+        setAvatarState("listening");
+        setIsAssistantSpeaking(false);
+        setIsRecording(true);
+        break;
+      case "input_audio_buffer.speech_stopped":
+        setAvatarState("thinking");
+        setIsRecording(false);
+        break;
+      case "conversation.item.input_audio_transcription.completed":
+        setAvatarState((prev) => (prev === "listening" ? "thinking" : prev));
+        break;
+      case "response.audio.delta":
+      case "response.output_audio.started":
+      case "response.output_audio.delta":
+        setAvatarState("speaking");
+        setIsAssistantSpeaking(true);
+        break;
+      case "response.audio_transcript.done":
+      case "response.output_audio.done":
+      case "response.done":
+        setAvatarState("idle");
+        setIsAssistantSpeaking(false);
+        break;
+    }
+  }, []);
+
   const {
     connect,
     disconnect,
@@ -107,13 +136,13 @@ function App() {
       handoffTriggeredRef.current = true;
       setSelectedAgentName(agentName);
     },
+    onTransportEvent: (event) => handleAvatarEvents(event),
   });
 
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
 
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(true);
+  const [isAvatarVisible, setIsAvatarVisible] = useState<boolean>(true);
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
@@ -124,6 +153,12 @@ function App() {
       return stored ? stored === 'true' : true;
     },
   );
+
+  const [avatarState, setAvatarState] = useState<
+    "idle" | "listening" | "thinking" | "speaking"
+  >("idle");
+  const [isAssistantSpeaking, setIsAssistantSpeaking] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
 
   // Initialize the recording hook.
   const { startRecording, stopRecording, downloadRecording } =
@@ -366,9 +401,9 @@ function App() {
     if (storedPushToTalkUI) {
       setIsPTTActive(storedPushToTalkUI === "true");
     }
-    const storedLogsExpanded = localStorage.getItem("logsExpanded");
-    if (storedLogsExpanded) {
-      setIsEventsPaneExpanded(storedLogsExpanded === "true");
+    const storedAvatarVisible = localStorage.getItem("avatarExpanded");
+    if (storedAvatarVisible) {
+      setIsAvatarVisible(storedAvatarVisible === "true");
     }
     const storedAudioPlaybackEnabled = localStorage.getItem(
       "audioPlaybackEnabled"
@@ -383,8 +418,8 @@ function App() {
   }, [isPTTActive]);
 
   useEffect(() => {
-    localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
-  }, [isEventsPaneExpanded]);
+    localStorage.setItem("avatarExpanded", isAvatarVisible.toString());
+  }, [isAvatarVisible]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -440,6 +475,38 @@ function App() {
       stopRecording();
     };
   }, [sessionStatus]);
+
+  useEffect(() => {
+    if (sessionStatus !== "CONNECTED") {
+      setAvatarState("idle");
+      setIsAssistantSpeaking(false);
+      setIsRecording(false);
+    }
+  }, [sessionStatus]);
+
+  useEffect(() => {
+    if (!sdkAudioElement) return;
+
+    const handlePlay = () => {
+      setAvatarState((prev) => (prev === "listening" ? prev : "speaking"));
+      setIsAssistantSpeaking(true);
+    };
+
+    const handleStop = () => {
+      setIsAssistantSpeaking(false);
+      setAvatarState("idle");
+    };
+
+    sdkAudioElement.addEventListener("playing", handlePlay);
+    sdkAudioElement.addEventListener("pause", handleStop);
+    sdkAudioElement.addEventListener("ended", handleStop);
+
+    return () => {
+      sdkAudioElement.removeEventListener("playing", handlePlay);
+      sdkAudioElement.removeEventListener("pause", handleStop);
+      sdkAudioElement.removeEventListener("ended", handleStop);
+    };
+  }, [sdkAudioElement]);
 
   const agentSetKey = searchParams.get("agentConfig") || "default";
 
@@ -545,8 +612,74 @@ function App() {
           </div>
         )}
         </div>
+        <aside
+          className={`${
+            isAvatarVisible
+              ? "w-1/2 opacity-100"
+              : "w-0 opacity-0"
+          } transition-all duration-200 ease-in-out overflow-hidden`}
+        >
+          {isAvatarVisible && (
+            <div className="h-full bg-white rounded-xl p-6 shadow flex flex-col gap-6 overflow-auto">
+              <div className="flex flex-col items-center gap-4">
+                <RobotAvatar
+                  isSpeaking={isAssistantSpeaking}
+                  state={avatarState}
+                  toggleSpeed={200}
+                />
+                <div className="bg-slate-900 text-white px-6 py-3 rounded-lg text-center shadow-md">
+                  <div className="text-sm text-slate-200">Speaker</div>
+                  <div className="mt-1 text-2xl font-semibold tracking-wide">01</div>
+                </div>
+              </div>
 
-        <Events isExpanded={isEventsPaneExpanded} />
+              <div className="grid grid-cols-2 gap-4 text-sm text-slate-800">
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <span className="text-xl">🔌</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Connected</div>
+                    <div className="font-semibold">{sessionStatus === "CONNECTED" ? "Yes" : "No"}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <span className="text-xl">🎤</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Mode</div>
+                    <div className="font-semibold">{isPTTActive ? "Push to Talk" : "Voice Detection"}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <span className="text-xl">🤖</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Avatar State</div>
+                    <div className="font-semibold capitalize">{avatarState}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <span className="text-xl">🗣️</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Assistant Speaking</div>
+                    <div className="font-semibold">{isAssistantSpeaking ? "Yes" : "No"}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                  <span className="text-xl">🎙️</span>
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-slate-500">Recording</div>
+                    <div className="font-semibold">{isRecording ? "Active" : "Idle"}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="text-base font-semibold text-slate-900 mb-2">Conversation Phase</div>
+                <p>
+                  Travel planning intent resolution details are shown in the transcript pane. The avatar reflects listening, thinking, and speaking states in real time.
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
 
       <BottomToolbar
@@ -557,8 +690,8 @@ function App() {
         isPTTUserSpeaking={isPTTUserSpeaking}
         handleTalkButtonDown={handleTalkButtonDown}
         handleTalkButtonUp={handleTalkButtonUp}
-        isEventsPaneExpanded={isEventsPaneExpanded}
-        setIsEventsPaneExpanded={setIsEventsPaneExpanded}
+        isAvatarVisible={isAvatarVisible}
+        setIsAvatarVisible={setIsAvatarVisible}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
         codec={urlCodec}
