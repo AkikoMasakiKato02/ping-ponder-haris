@@ -100,13 +100,10 @@ function App() {
         node.srcObject = null;
       }
       node.pause();
+      node.load();
     };
 
-    const audioNodes = Array.from(
-      document.querySelectorAll<HTMLAudioElement>(
-        'audio[data-source="realtime-sdk-output"]',
-      ),
-    );
+    const audioNodes = Array.from(document.querySelectorAll<HTMLAudioElement>("audio"));
 
     audioNodes.forEach((node) => {
       // Keep the memoized SDK element but ensure it's clean before reuse.
@@ -214,6 +211,32 @@ function App() {
     const id = storedSession || uuidv4();
     localStorage.setItem("travelSessionId", id);
     setSessionId(id);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || typeof window === "undefined") return;
+
+    const initKey = `travelStateInitialized_${sessionId}`;
+    const alreadyInitialized = localStorage.getItem(initKey) === "true";
+    if (alreadyInitialized) return;
+
+    const resetStateForSession = async () => {
+      try {
+        await fetch("/api/update-state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            action: "resetState",
+          }),
+        });
+        localStorage.setItem(initKey, "true");
+      } catch (err) {
+        console.error("Failed to reset server state for new session", err);
+      }
+    };
+
+    resetStateForSession();
   }, [sessionId]);
 
   // Initialize the recording hook.
