@@ -13,6 +13,7 @@ import { SessionStatus } from '../types';
 export interface RealtimeSessionCallbacks {
   onConnectionChange?: (status: SessionStatus) => void;
   onAgentHandoff?: (agentName: string) => void;
+  onTransportEvent?: (event: any) => void;
 }
 
 export interface ConnectOptions {
@@ -44,6 +45,8 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const historyHandlers = useHandleSessionHistory().current;
 
   function handleTransportEvent(event: any) {
+    callbacks.onTransportEvent?.(event);
+
     // Handle additional server events that aren't managed by the session
     switch (event.type) {
       case "conversation.item.input_audio_transcription.completed": {

@@ -73,6 +73,18 @@ export class ServerStateManager {
     return '';
   }
 
+  private getStateSnapshotPath(): string {
+    if (typeof window === 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path');
+      return path.join(
+        process.cwd(),
+        'src/app/agentConfigs/TravelPlanningAgent/State.json'
+      );
+    }
+    return '';
+  }
+
   public async readState(): Promise<TravelState> {
     if (typeof window === 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -83,6 +95,12 @@ export class ServerStateManager {
         if (fs.existsSync(sessionLogPath)) {
           const sessionData = JSON.parse(fs.readFileSync(sessionLogPath, 'utf8'));
           return sessionData;
+        }
+
+        const snapshotPath = this.getStateSnapshotPath();
+        if (snapshotPath && fs.existsSync(snapshotPath)) {
+          const snapshotData = JSON.parse(fs.readFileSync(snapshotPath, 'utf8'));
+          return snapshotData;
         }
       } catch (error) {
         console.error('Error reading state:', error);
@@ -97,10 +115,15 @@ export class ServerStateManager {
     if (typeof window === 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const fs = require('fs');
-      
+
       try {
         const sessionLogPath = this.getSessionLogPath();
         fs.writeFileSync(sessionLogPath, JSON.stringify(state, null, 2));
+
+        const snapshotPath = this.getStateSnapshotPath();
+        if (snapshotPath) {
+          fs.writeFileSync(snapshotPath, JSON.stringify(state, null, 2));
+        }
       } catch (error) {
         console.error('Error writing state:', error);
       }
