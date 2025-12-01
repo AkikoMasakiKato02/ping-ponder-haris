@@ -91,6 +91,35 @@ function App() {
     return el;
   }, []);
 
+  const cleanSdkAudioElements = useCallback(() => {
+    if (typeof document === "undefined") return;
+
+    const teardownAudio = (node: HTMLAudioElement) => {
+      if (node.srcObject instanceof MediaStream) {
+        node.srcObject.getTracks().forEach((t) => t.stop());
+        node.srcObject = null;
+      }
+      node.pause();
+    };
+
+    const audioNodes = Array.from(
+      document.querySelectorAll<HTMLAudioElement>(
+        'audio[data-source="realtime-sdk-output"]',
+      ),
+    );
+
+    audioNodes.forEach((node) => {
+      // Keep the memoized SDK element but ensure it's clean before reuse.
+      if (sdkAudioElement && node === sdkAudioElement) {
+        teardownAudio(node);
+        return;
+      }
+
+      teardownAudio(node);
+      node.remove();
+    });
+  }, [sdkAudioElement]);
+
   // Attach SDK audio element once it exists (after first render in browser)
   useEffect(() => {
     if (sdkAudioElement && !audioElementRef.current) {
@@ -299,12 +328,7 @@ function App() {
       setSessionStatus("CONNECTING");
 
       // Make sure any previous tracks on the shared audio element are stopped before reuse
-      if (sdkAudioElement?.srcObject instanceof MediaStream) {
-        (sdkAudioElement.srcObject as MediaStream)
-          .getTracks()
-          .forEach((t) => t.stop());
-        sdkAudioElement.srcObject = null;
-      }
+      cleanSdkAudioElements();
 
       try {
         const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -350,11 +374,7 @@ function App() {
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
 
-    if (audioElementRef.current?.srcObject instanceof MediaStream) {
-      const stream = audioElementRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((t) => t.stop());
-      audioElementRef.current.srcObject = null;
-    }
+    cleanSdkAudioElements();
   };
 
   const sendSimulatedUserMessage = (text: string) => {
