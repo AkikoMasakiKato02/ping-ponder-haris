@@ -1,88 +1,170 @@
-import React, { useState, useEffect } from 'react';
+import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
+
+import movingImage from "@/app/services/avatar/moving.jpg";
+import stillImage from "@/app/services/avatar/still.jpg";
 
 interface RobotAvatarProps {
   isSpeaking?: boolean;
-  state?: 'idle' | 'listening' | 'thinking' | 'speaking';
+  state?: "idle" | "listening" | "thinking" | "speaking";
   toggleSpeed?: number;
 }
 
-export const RobotAvatar: React.FC<RobotAvatarProps> = ({ 
-  isSpeaking = false, 
-  state = 'idle',
-  toggleSpeed = 200 
+export const RobotAvatar: React.FC<RobotAvatarProps> = ({
+  isSpeaking = false,
+  state = "idle",
+  toggleSpeed = 200,
 }) => {
-  const [currentImage, setCurrentImage] = useState('moving');
-  
+  const [currentImage, setCurrentImage] = useState<"moving" | "still">("moving");
+
+  const stateLabel = useMemo(() => {
+    switch (state) {
+      case "listening":
+        return "Listening";
+      case "thinking":
+        return "Thinking";
+      case "speaking":
+        return "Speaking";
+      default:
+        return "Idle";
+    }
+  }, [state]);
+
   // Toggle between images when speaking
   useEffect(() => {
-    console.log('RobotAvatar state changed:', state, 'isSpeaking:', isSpeaking);
-    
-    if (state === 'speaking') {
-      console.log('Starting image toggle for speaking state');
+    if (state === "speaking") {
       const interval = setInterval(() => {
-        setCurrentImage(prev => {
-          const newImage = prev === 'still' ? 'moving' : 'still';
-          console.log('Toggling image from', prev, 'to', newImage);
-          return newImage;
-        });
+        setCurrentImage((prev) => (prev === "still" ? "moving" : "still"));
       }, toggleSpeed);
-      
+
       return () => clearInterval(interval);
-    } else {
-      console.log('Not speaking, showing moving image');
-      // When not speaking, always show moving image
-      setCurrentImage('moving');
     }
+
+    // When not speaking, always show moving image
+    setCurrentImage("moving");
   }, [state, toggleSpeed, isSpeaking]);
 
-  const getImageSrc = () => {
-    if (currentImage === 'still') {
-      return '/still.jpg';
-    }
-    return '/moving.jpg';
-  };
+  const getImageSrc = () => (currentImage === "still" ? stillImage : movingImage);
 
   return (
-    <div style={{
-      width: '200px',
-      height: '200px',
-      borderRadius: '50%',
-      background: state === 'speaking' ? '#10b981' : 
-                  state === 'listening' ? '#3b82f6' : 
-                  state === 'thinking' ? '#f59e0b' : '#6b7280',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      margin: '0 auto',
-      transition: `all ${toggleSpeed}ms ease-in-out`,
-      animation: state === 'speaking' ? 'pulse 1s infinite' : 'none',
-      boxShadow: state === 'speaking' ? '0 0 20px rgba(16, 185, 129, 0.5)' : 'none',
-      overflow: 'hidden'
-    }}>
-      <img 
-        src={getImageSrc()}
-        alt="Robot Avatar"
+    <div className="flex flex-col items-center gap-3">
+      <div
         style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          borderRadius: '50%',
-          transition: `opacity ${toggleSpeed}ms ease-in-out`
+          width: "210px",
+          height: "210px",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
-        onError={(e) => {
-          // Fallback to emoji if images fail to load
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent) {
-            parent.innerHTML = '<div style="font-size: 80px; color: white;">🤖</div>';
-          }
-        }}
-      />
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background:
+              state === "listening"
+                ? "radial-gradient(circle at 50% 50%, rgba(59,130,246,0.35), transparent 60%)"
+                : state === "thinking"
+                  ? "radial-gradient(circle at 50% 50%, rgba(245,158,11,0.35), transparent 60%)"
+                  : "radial-gradient(circle at 50% 50%, rgba(16,185,129,0.3), transparent 55%)",
+            animation:
+              state === "listening"
+                ? "listeningPulse 1.4s ease-in-out infinite"
+                : state === "thinking"
+                  ? "thinkingSpin 4s linear infinite"
+                  : state === "speaking"
+                    ? "speakingPulse 0.9s ease-in-out infinite"
+                    : "none",
+          }}
+        />
+
+        <div
+          style={{
+            width: "200px",
+            height: "200px",
+            borderRadius: "50%",
+            background:
+              state === "speaking"
+                ? "linear-gradient(135deg, #0ea5e9, #10b981)"
+                : state === "listening"
+                  ? "linear-gradient(135deg, #2563eb, #22d3ee)"
+                  : state === "thinking"
+                    ? "linear-gradient(135deg, #f59e0b, #fcd34d)"
+                    : "linear-gradient(135deg, #6b7280, #94a3b8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto",
+            transition: `all ${toggleSpeed}ms ease-in-out`,
+            boxShadow:
+              state === "speaking"
+                ? "0 0 24px rgba(16, 185, 129, 0.45), 0 0 8px rgba(14,165,233,0.5)"
+                : state === "listening"
+                  ? "0 0 20px rgba(59,130,246,0.35)"
+                  : state === "thinking"
+                    ? "0 0 20px rgba(245,158,11,0.35)"
+                    : "none",
+            overflow: "hidden",
+          }}
+        >
+          <Image
+            src={getImageSrc()}
+            alt="Robot Avatar"
+            width={200}
+            height={200}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              borderRadius: "50%",
+              transition: `opacity ${toggleSpeed}ms ease-in-out`,
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="text-center">
+        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">State</div>
+        <div className="text-lg font-semibold text-slate-800">{stateLabel}</div>
+      </div>
+
       <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
+        @keyframes listeningPulse {
+          0% {
+            transform: scale(0.95);
+            opacity: 0.6;
+          }
+          50% {
+            transform: scale(1.05);
+            opacity: 1;
+          }
+          100% {
+            transform: scale(0.95);
+            opacity: 0.6;
+          }
+        }
+
+        @keyframes thinkingSpin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes speakingPulse {
+          0%,
+          100% {
+            transform: scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 1;
+          }
         }
       `}</style>
     </div>

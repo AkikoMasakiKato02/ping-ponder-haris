@@ -44,7 +44,11 @@ export async function POST(request: NextRequest) {
           data.metadata
         );
         break;
-        
+
+      case 'resetState':
+        await stateManager.resetState();
+        break;
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
