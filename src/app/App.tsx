@@ -27,10 +27,12 @@ import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServic
 import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
 import { travelPlanningScenario } from "@/app/agentConfigs/TravelPlanningAgent";
 import { fastTravelPlanningScenario } from "@/app/agentConfigs/TravelPlanningAgent/fast";
+import { callCenterScenario } from "@/app/agentConfigs/CallCenterAgent";
 import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
 import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
 import { travelPlanningCompanyName } from "@/app/agentConfigs/TravelPlanningAgent";
 import { fastTravelPlanningCompanyName } from "@/app/agentConfigs/TravelPlanningAgent/fast";
+import { callCenterCompanyName } from "@/app/agentConfigs/CallCenterAgent";
 import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 
 // Map used by connect logic for scenarios defined via the SDK.
@@ -40,6 +42,7 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
   chatSupervisor: chatSupervisorScenario,
   travelPlanning: travelPlanningScenario,
   fastTravelPlanning: fastTravelPlanningScenario,
+  callCenter: callCenterScenario,
 };
 
 import useAudioDownload from "./hooks/useAudioDownload";
@@ -340,11 +343,13 @@ function App() {
         }
 
   const companyName = agentSetKey === 'fastTravelPlanning'
-    ? customerServiceRetailCompanyName
+    ? fastTravelPlanningCompanyName
     : agentSetKey === 'travelPlanning'
     ? travelPlanningCompanyName
-    : agentSetKey === 'fastTravelPlanning'
-    ? fastTravelPlanningCompanyName
+    : agentSetKey === 'customerServiceRetail'
+    ? customerServiceRetailCompanyName
+    : agentSetKey === 'callCenter'
+    ? callCenterCompanyName
     : chatSupervisorCompanyName;
         const guardrail = createModerationGuardrail(companyName);
 
